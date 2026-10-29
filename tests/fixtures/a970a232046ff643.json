@@ -1,0 +1,1 @@
+{"key": "api-v3.mbta.com/alerts?filter[datetime]=NOW&filter[stop]=place-nuniv", "status": 200, "body": {"data": [], "jsonapi": {"version": "1.0"}}}

@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          - os: macos-latest
+            python: "3.13"
+          - os: windows-latest
+            python: "3.13"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Build
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      # Test the built wheel, not the source tree, so packaging mistakes fail CI
+      - name: Install wheel
+        shell: bash
+        run: pip install "$(ls dist/*.whl)" pytest anyio
+
+      # Recorded API responses only; the live tests are run by hand before a release
+      - name: Test
+        run: pytest -q
+
+      - name: Smoke test the entry points
+        shell: bash
+        run: |
+          bostonmove --version
+          python -m bostonmove --version
+          bostonmove --help
