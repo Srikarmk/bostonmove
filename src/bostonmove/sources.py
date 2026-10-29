@@ -20,6 +20,13 @@ def _rel(item: dict, name: str) -> str | None:
     return data.get("id") if isinstance(data, dict) else None
 
 
+def route_name(a: dict) -> str | None:
+    """'Red Line', 'Green Line E', '1', 'Framingham/Worcester Line': rail by its long name, a bus by its number."""
+    if a.get("type") in (0, 1, 2, 4):
+        return a.get("long_name") or a.get("short_name")
+    return a.get("short_name") or a.get("long_name")
+
+
 def when(iso: str | None) -> datetime | None:
     return datetime.fromisoformat(iso) if iso else None
 
@@ -72,17 +79,17 @@ async def routes_at(web: Web, stop_ids: list[str]) -> list[dict]:
         return []
     doc = await web.mbta("/routes", {"filter[stop]": ",".join(stop_ids)}, ttl=DAY, disk=True)
     return [{"id": d["id"], "type": ROUTE_TYPES.get(d["attributes"]["type"]), "type_code": d["attributes"]["type"],
-             "name": d["attributes"]["short_name"] or d["attributes"]["long_name"],
+             "name": route_name(d["attributes"]),
              "long_name": d["attributes"]["long_name"],
              "directions": d["attributes"]["direction_names"],
              "destinations": d["attributes"]["direction_destinations"]} for d in doc["data"]]
 
 
-async def route_stop_ids(web: Web, route: str, direction: int) -> list[str]:
-    """A route's stops in travel order for one direction (stations for rail, stops for bus)."""
+async def route_stops(web: Web, route: str, direction: int) -> list[dict]:
+    """A route's stops in travel order for one direction (stations for rail, stops for bus), as id and name."""
     doc = await web.mbta("/stops", {"filter[route]": route, "filter[direction_id]": str(direction)},
                          ttl=DAY, disk=True)
-    return [d["id"] for d in doc["data"]]
+    return [{"id": d["id"], "name": d["attributes"]["name"]} for d in doc["data"]]
 
 
 def _departure(p: dict, inc: dict, now: datetime, live: bool) -> dict | None:
@@ -97,7 +104,7 @@ def _departure(p: dict, inc: dict, now: datetime, live: bool) -> dict | None:
     route_id = _rel(p, "route")
     route = inc.get(("route", route_id or ""), {}).get("attributes", {})
     return {
-        "route": route_id, "route_name": route.get("short_name") or route.get("long_name") or route_id,
+        "route": route_id, "route_name": route_name(route) or route_id,
         "direction_id": a.get("direction_id"),
         "headsign": trip.get("headsign") or (route.get("direction_destinations") or [None, None])[a.get("direction_id") or 0],
         "time": t.isoformat(timespec="minutes") if t else None,
@@ -133,22 +140,40 @@ async def schedules(web: Web, stop_id: str, now: datetime, route: str | None = N
     return [r for r in rows if r]
 
 
-async def trip_stop_times(web: Web, trip_id: str) -> list[dict]:
-    """Time at each stop of one trip, with each platform's station, in order: the trip's live predictions,
-    or its timetable when there are none (trips the MBTA adds on the day have no timetable)."""
-    for path, ttl in (("/predictions", 15), ("/schedules", 300)):
-        doc = await web.mbta(path, {"filter[trip]": trip_id, "include": "stop", "sort": "stop_sequence"}, ttl=ttl)
-        if doc["data"]:
-            break
+async def trips_between(web: Web, a_id: str, b_id: str, now: datetime, route: str, direction: int,
+                        live: bool = True) -> list[dict]:
+    """Trips on one route and direction that call at stop a and then at stop b, soonest first: the departure
+    from a (as in `predictions`) plus the ride time to b. One request for both stops, paired up by trip: live
+    predictions, or the next 90 minutes of the timetable when `live` is False."""
+    params = {"filter[stop]": f"{a_id},{b_id}", "filter[route]": route, "filter[direction_id]": str(direction),
+              "include": "trip,route,stop"}
+    if live:
+        doc = await web.mbta("/predictions", params, ttl=15)
+    else:
+        start = now.hour * 60 + now.minute
+        end = start + 90  # past midnight the timetable counts on, e.g. 24:40
+        doc = await web.mbta("/schedules", {**params, "filter[date]": now.date().isoformat(),
+                                            "filter[min_time]": f"{start // 60:02d}:{start % 60:02d}",
+                                            "filter[max_time]": f"{end // 60:02d}:{end % 60:02d}"}, ttl=300)
     inc = _included(doc)
+    calls: dict[str, dict[str, dict]] = {}
+    for p in doc["data"]:
+        sid = _rel(p, "stop") or ""
+        at = {sid, _rel(inc.get(("stop", sid), {}), "parent_station")}  # a platform, and its station
+        end_ = a_id if a_id in at else b_id if b_id in at else None
+        if end_:
+            calls.setdefault(_rel(p, "trip") or "", {})[end_] = p
     out = []
-    for s in doc["data"]:
-        sid = _rel(s, "stop")
-        parent = _rel(inc.get(("stop", sid or ""), {}), "parent_station")
-        a = s["attributes"]
-        out.append({"stop": sid, "station": parent or sid,
-                    "time": when(a.get("departure_time") or a.get("arrival_time"))})
-    return out
+    for c in calls.values():
+        if a_id not in c or b_id not in c:
+            continue
+        aa, ba = c[a_id]["attributes"], c[b_id]["attributes"]
+        t_a = when(aa.get("departure_time") or aa.get("arrival_time"))
+        t_b = when(ba.get("arrival_time") or ba.get("departure_time"))
+        dep = _departure(c[a_id], inc, now, live)
+        if dep and t_a and t_b and t_b > t_a:
+            out.append({**dep, "ride_minutes": (t_b - t_a).total_seconds() / 60})
+    return sorted(out, key=lambda r: r["minutes"])
 
 
 async def alerts(web: Web, route: str | None = None, stop_id: str | None = None) -> list[dict]:

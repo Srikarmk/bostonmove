@@ -1,1 +1,0 @@
-{"key": "api-v3.mbta.com/alerts?filter[datetime]=NOW&filter[route]=1", "status": 200, "body": {"data": [], "jsonapi": {"version": "1.0"}}}

@@ -17,8 +17,8 @@ INSTRUCTIONS = (
     "bostonmove answers getting-around questions for greater Boston from live public data: MBTA departures and "
     "service alerts (subway, bus, commuter rail, ferry) and Bluebikes bike and dock counts. Places can be station "
     "names ('Park Street'), stop ids, addresses or landmarks ('Fenway Park'), or 'lat,lon'. Every result has "
-    "'sources' and 'as_of'. Walking and cycling times are estimates; plan_trip gives direct options only, no "
-    "transfers. It only reads public data."
+    "'sources' and 'as_of'. Walking and cycling times are estimates; plan_trip's MBTA options are one route, or "
+    "one change between subway and light-rail lines. It only reads public data."
 )
 
 mcp = MCPServer("bostonmove", instructions=INSTRUCTIONS, version=__version__)
@@ -86,7 +86,7 @@ async def bike_availability(
 
 @mcp.tool(title="Ways to get from A to B", annotations=READ_ONLY)
 async def plan_trip(origin: Place, destination: Place) -> dict[str, Any]:
-    """Use for "how do I get from A to B": walking, Bluebikes and direct MBTA options with arrival times, using live departures and bike counts. Direct routes only, no transfers."""
+    """Use for "how do I get from A to B": walking, Bluebikes and MBTA options with arrival times, using live departures and bike counts. MBTA options are one route, or one change between subway and light-rail lines (Red, Orange, Blue, Green, Mattapan); changes involving buses aren't planned."""
     return await _run(engine.plan(web(), origin, destination))
 
 

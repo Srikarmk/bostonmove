@@ -72,18 +72,46 @@ async def test_plan_south_station_to_kendall_finds_the_red_line(web):
     modes = [o["mode"] for o in r["options"]]
     assert "transit" in modes and "bluebikes" in modes and "walk" in modes
     red = next(o for o in r["options"] if o["mode"] == "transit")
-    assert red["route"] == "Red" and red["headsign"] == "Alewife"
-    assert red["board"]["id"] == "place-sstat" and red["alight"]["id"] == "place-knncl"
-    assert 0 < red["ride_minutes"] < 20
+    assert red["transfers"] == 0 and len(red["legs"]) == 1
+    leg = red["legs"][0]
+    assert leg["route"] == "Red" and leg["route_name"] == "Red Line" and leg["headsign"] == "Alewife"
+    assert leg["board"]["id"] == "place-sstat" and leg["alight"]["id"] == "place-knncl"
+    assert 0 < leg["ride_minutes"] < 20
     assert [o["total_minutes"] for o in r["options"]] == sorted(o["total_minutes"] for o in r["options"])
-    assert any("Direct routes only" in n for n in r["notes"])
+    # A subway line goes the whole way, so changes aren't priced.
+    assert all(o["transfers"] == 0 for o in r["options"] if o["mode"] == "transit")
 
 
 async def test_plan_finds_a_bus_stopping_on_the_right_side(web):
     # Route 1 stops on opposite sides of Mass Ave each way; the option must board toward Harvard.
     r = await engine.plan(web, "Northeastern", "Harvard")
-    bus = [o for o in r["options"] if o["mode"] == "transit" and o["route"] == "1"]
-    assert bus and bus[0]["headsign"].startswith("Harvard")
+    bus = [o for o in r["options"] if o["mode"] == "transit" and o["legs"][0]["route"] == "1"]
+    assert bus and bus[0]["legs"][0]["headsign"].startswith("Harvard")
+
+
+def _changes(r):
+    return [o for o in r["options"] if o["mode"] == "transit" and o["transfers"] == 1]
+
+
+async def test_plan_changes_lines_when_no_subway_line_goes_the_whole_way(web):
+    r = await engine.plan(web, "Northeastern", "Harvard")
+    changes = _changes(r)
+    assert changes, "Green E or Orange to the Red Line"
+    for o in changes:
+        first, second = o["legs"]
+        assert first["alight"]["id"] == second["board"]["id"]  # the change is at one station
+        assert second["route"] == "Red" and second["alight"]["id"] == "place-harsq"
+        # The second train leaves after the first one gets in, with time to change platforms.
+        assert second["depart"]["minutes"] >= first["depart"]["minutes"] + first["ride_minutes"] + engine.TRANSFER_MIN - 1
+        assert o["total_minutes"] >= second["depart"]["minutes"] + second["ride_minutes"]
+    assert any("one change" in n for n in r["notes"])
+
+
+async def test_plan_kendall_to_back_bay_changes_from_the_red_line(web):
+    r = await engine.plan(web, "Kendall", "Back Bay")
+    changes = _changes(r)
+    assert changes and all(o["legs"][0]["route"] == "Red" for o in changes)
+    assert {o["legs"][0]["alight"]["id"] for o in changes} <= {"place-dwnxg", "place-pktrm"}
 
 
 async def test_rate_limit_keeps_walking_and_bike_options(web_with):

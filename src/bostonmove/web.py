@@ -29,6 +29,7 @@ NOMINATIM = "https://nominatim.openstreetmap.org/search"
 UA = f"bostonmove/{__version__} (+https://github.com/Srikarmk/bostonmove)"
 
 DAY = 24 * 3600
+MAX_WAIT = 20  # seconds to wait out the MBTA's per-minute limit before giving up
 
 
 class Unavailable(Exception):
@@ -97,10 +98,16 @@ class Web:
 
     async def _get(self, source: str, url: str, params: dict, headers: dict | None = None) -> Any:
         client = await self._http()
-        try:
-            r = await client.get(url, params=params, headers=headers)
-        except httpx.HTTPError as e:
-            raise Unavailable(f"{source} could not be reached ({type(e).__name__}).") from None
+        for attempt in (1, 2):
+            try:
+                r = await client.get(url, params=params, headers=headers)
+            except httpx.HTTPError as e:
+                raise Unavailable(f"{source} could not be reached ({type(e).__name__}).") from None
+            # The MBTA counts requests per minute and says when the count resets: a short wait beats failing.
+            wait = float(r.headers.get("x-ratelimit-reset", 0)) - time.time()
+            if r.status_code != 429 or attempt == 2 or not 0 < wait <= MAX_WAIT:
+                break
+            await asyncio.sleep(wait + 0.5)
         if r.status_code == 429:
             hint = "" if os.environ.get("MBTA_API_KEY") or source != "MBTA" else (
                 " Without a key the MBTA allows 20 requests a minute; set MBTA_API_KEY (free at "

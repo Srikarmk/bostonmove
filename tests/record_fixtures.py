@@ -32,6 +32,7 @@ SCENARIOS = [
     ("near", ("Fenway Park",), {}),
     ("plan", ("South Station", "Kendall"), {}),
     ("plan", ("Northeastern", "Harvard"), {}),
+    ("plan", ("Kendall", "Back Bay"), {}),
     ("plan", ("Back Bay", "42.3601,-71.0589"), {}),
 ]
 

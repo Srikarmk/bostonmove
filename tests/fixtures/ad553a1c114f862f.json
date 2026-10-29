@@ -1,0 +1,1 @@
+{"key": "api-v3.mbta.com/schedules?filter[date]=2026-10-29&filter[min_time]=16:00&filter[stop]=1928&include=trip,route&page[limit]=30&sort=departure_time", "status": 200, "body": {"data": [], "jsonapi": {"version": "1.0"}}}

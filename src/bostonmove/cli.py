@@ -4,7 +4,7 @@
   bostonmove alerts [--route Red] [--stop X]    service alerts in effect now
   bostonmove bikes "Kendall" [--need dock]      nearest Bluebikes stations with counts
   bostonmove near "Fenway Park"                 stops and bike stations near a place
-  bostonmove plan "Northeastern" "Harvard"      walking, Bluebikes and direct MBTA options
+  bostonmove plan "Northeastern" "Harvard"      walking, Bluebikes and MBTA options (one change at most)
   bostonmove mcp                                run as an MCP server (Claude Code, Cursor, Claude Desktop)
 
 Add --json to any command for the full result.
@@ -69,10 +69,18 @@ def render(cmd: str, r: dict) -> str:
                            f"({o['pick_up']['bikes']} bikes) to {o['drop_off']['station']} "
                            f"({o['drop_off']['docks']} docks)  (arrive ~{_t(o['arrive'])})")
             else:
-                live = "" if o["depart"]["live"] else ", scheduled"
-                out.append(f"  {o['total_minutes']:>3} min  {o['route_name']} to {o['headsign']}: board at "
-                           f"{o['board']['stop']} ({o['board']['walk_minutes']} min walk) in {o['depart']['minutes']} min"
-                           f"{live}, ride {o['ride_minutes']}, off at {o['alight']['stop']}  (arrive ~{_t(o['arrive'])})")
+                parts = []
+                for i, leg in enumerate(o["legs"]):
+                    live = "" if leg["depart"]["live"] else ", scheduled"
+                    if i == 0:
+                        m = leg["depart"]["minutes"]
+                        when = (f"board at {leg['board']['stop']} ({o['walk_to']['minutes']} min walk) "
+                                + ("now" if m == 0 else f"in {m} min") + live)
+                    else:
+                        when = f"leaves {_t(leg['depart']['time'])}{live}"
+                    parts.append(f"{leg['route_name']} to {leg['headsign']}: {when}, ride {leg['ride_minutes']}, "
+                                 f"off at {leg['alight']['stop']}")
+                out.append(f"  {o['total_minutes']:>3} min  " + "; then ".join(parts) + f"  (arrive ~{_t(o['arrive'])})")
                 for a in o.get("alerts", []):
                     out.append(f"           ! {a}")
         out += [f"  · {n}" for n in r["notes"]]
