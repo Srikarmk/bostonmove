@@ -1,0 +1,29 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Srikarmk/bostonmove",
+  "title": "bostonmove",
+  "description": "Live MBTA departures and alerts, Bluebikes bikes and docks, and Boston trip options. Read-only.",
+  "repository": {
+    "url": "https://github.com/Srikarmk/bostonmove",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "bostonmove",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": { "type": "stdio" },
+      "packageArguments": [{ "type": "positional", "value": "mcp" }],
+      "environmentVariables": [
+        {
+          "name": "MBTA_API_KEY",
+          "description": "Optional free MBTA V3 API key (api-v3.mbta.com): 1,000 requests a minute instead of 20.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

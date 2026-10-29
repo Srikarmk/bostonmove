@@ -1,7 +1,7 @@
 [project]
 name = "bostonmove"
 version = "0.1.0"
-description = "Getting around Boston: live MBTA departures and alerts, Bluebikes availability, and simple door-to-door trip options. CLI and MCP server; read-only."
+description = "Getting around Boston: live MBTA departures and alerts, Bluebikes availability, and door-to-door trip options with up to one subway change. CLI and MCP server; read-only."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -19,6 +19,8 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: GIS",
 ]
 dependencies = ["mcp>=2.3,<3", "httpx>=0.27", "tzdata; sys_platform == 'win32'"]
 

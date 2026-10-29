@@ -1,5 +1,9 @@
 # bostonmove
 
+<!-- mcp-name: io.github.Srikarmk/bostonmove -->
+
+<a href="https://github.com/Srikarmk/bostonmove/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Srikarmk/bostonmove/actions/workflows/ci.yml/badge.svg" /></a> <a href="https://pypi.org/project/bostonmove/"><img alt="PyPI" src="https://img.shields.io/pypi/v/bostonmove?color=5b4fc9" /></a> <a href="https://pypi.org/project/bostonmove/"><img alt="Python" src="https://img.shields.io/pypi/pyversions/bostonmove" /></a> <a href="https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Srikarmk/bostonmove"><img alt="MCP registry" src="https://img.shields.io/badge/MCP%20registry-io.github.Srikarmk%2Fbostonmove-5b4fc9" /></a> <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue" /></a>
+
 Getting around Boston from live public data: MBTA departures and service alerts, Bluebikes bike and dock
 counts, and door-to-door options: walk, Bluebikes, one MBTA route, or one change between subway lines. A
 command-line tool and an MCP server, so Claude Code, Claude Desktop, Cursor and other agents can answer
@@ -19,23 +23,25 @@ Northeastern University  →  Harvard  (4424 m straight line)
 
 ## Install
 
-From a clone, until it's on PyPI:
-
 ```bash
-uv tool install .
+uvx bostonmove plan "South Station" "Kendall"   # run once without installing
+uv tool install bostonmove                      # or: pipx install bostonmove / pip install bostonmove
 ```
 
 Add it to Claude Code:
 
 ```bash
-claude mcp add bostonmove -- bostonmove mcp
+claude mcp add --scope user bostonmove -- uvx bostonmove mcp
 ```
 
-Or in any MCP client's config:
+Or in any MCP client's config (Claude Desktop, Cursor):
 
 ```json
-{ "mcpServers": { "bostonmove": { "command": "bostonmove", "args": ["mcp"] } } }
+{ "mcpServers": { "bostonmove": { "command": "uvx", "args": ["bostonmove", "mcp"] } } }
 ```
+
+If the client can't find `uvx`, use the full path that `which uvx` (macOS, Linux) or `where uvx` (Windows)
+prints as the `command`.
 
 **MBTA API key (optional, free).** Without one the MBTA allows 20 requests a minute, which two or three trip
 plans can use up. With a key from [api-v3.mbta.com](https://api-v3.mbta.com) it's 1,000. Set `MBTA_API_KEY`
