@@ -40,8 +40,9 @@ def render(cmd: str, r: dict) -> str:
         out.append(f"{r['stop']['name']}  ·  {r['kind']}  ·  {_t(r['as_of'])}")
         if r.get("note"):
             out.append(r["note"])
+        w = max((len(g["route_name"]) for g in r["departures"]), default=0)
         for g in r["departures"]:
-            out.append(f"  {g['route_name']:>10}  to {g['headsign'] or '?':<28} " + ", ".join(_when(n) for n in g["next"]))
+            out.append(f"  {g['route_name']:<{w}}  to {g['headsign'] or '?':<28} " + ", ".join(_when(n) for n in g["next"]))
         for a in r["alerts"]:
             out.append(f"  ! {a['header']}")
     elif cmd == "alerts":
@@ -50,7 +51,7 @@ def render(cmd: str, r: dict) -> str:
         for a in r["alerts"]:
             out.append(f"  [{a['effect']}] {a['header']}")
     elif cmd == "bikes":
-        out.append(f"Bluebikes near {r['place']['name'][:60]}  ·  counts at {_t(r['as_of'])} UTC")
+        out.append(f"Bluebikes near {r['place']['name'][:60]}  ·  counts at {_t(r['as_of'])}")
         for s in r["stations"]:
             out.append(f"  {s['metres']:>5} m  {s['name'][:44]:<44} bikes {s['bikes']:>2} (e {s['ebikes']})  docks {s['docks']:>2}")
     elif cmd == "near":

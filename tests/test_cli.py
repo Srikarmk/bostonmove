@@ -17,6 +17,8 @@ def test_next_text(replay, capsys):
     assert cli.main(["next", "Park Street"]) == 0
     out = capsys.readouterr().out
     assert out.startswith("Park Street") and "Red Line" in out
+    rows = [line for line in out.splitlines() if "  to " in line]
+    assert len({line.index("  to ") for line in rows}) == 1  # one column for "to", whatever the route name
 
 
 def test_plan_json(replay, capsys):
@@ -27,7 +29,8 @@ def test_plan_json(replay, capsys):
 
 def test_bikes_text(replay, capsys):
     assert cli.main(["bikes", "Kendall", "--need", "dock"]) == 0
-    assert "docks" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "docks" in out and "UTC" not in out.splitlines()[0]
 
 
 def test_usage_error_exits_2(replay, capsys):

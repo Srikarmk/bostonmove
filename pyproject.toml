@@ -1,6 +1,6 @@
 [project]
 name = "bostonmove"
-version = "0.1.0"
+version = "0.1.1"
 description = "Getting around Boston: live MBTA departures and alerts, Bluebikes availability, and door-to-door trip options with up to one subway change. CLI and MCP server; read-only."
 readme = "README.md"
 requires-python = ">=3.10"

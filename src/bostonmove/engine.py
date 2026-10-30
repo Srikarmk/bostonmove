@@ -11,12 +11,11 @@ from __future__ import annotations
 import asyncio
 import re
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from . import geo, sources
 from .web import DAY, Unavailable, Web
 
-BOSTON = ZoneInfo("America/New_York")
+BOSTON = sources.BOSTON
 STOP_ID = re.compile(r"^(place-[a-z0-9-]+|\d{1,6}|[A-Z]{2,}-\d{3,})$")
 # Order to try shared routes in: subway, light rail, commuter rail, ferry, then bus.
 ROUTE_ORDER = {1: 0, 0: 1, 2: 2, 4: 3, 3: 4}

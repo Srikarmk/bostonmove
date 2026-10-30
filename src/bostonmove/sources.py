@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from .geo import metres
 from .web import DAY, Web
+
+BOSTON = ZoneInfo("America/New_York")
 
 ROUTE_TYPES = {0: "light rail", 1: "subway", 2: "commuter rail", 3: "bus", 4: "ferry"}
 CANCELLED = {"CANCELLED", "SKIPPED"}
@@ -196,7 +199,7 @@ async def alerts(web: Web, route: str | None = None, stop_id: str | None = None)
 
 
 async def bike_stations(web: Web) -> tuple[list[dict], str]:
-    """Installed Bluebikes stations with live counts, and when the feed was last updated (UTC ISO)."""
+    """Installed Bluebikes stations with live counts, and when the feed was last updated (Boston time, ISO)."""
     info = await web.gbfs("station_information", disk=True, ttl=DAY)
     status = await web.gbfs("station_status")
     live = {s["station_id"]: s for s in status["data"]["stations"]}
@@ -213,10 +216,10 @@ async def bike_stations(web: Web) -> tuple[list[dict], str]:
             "bikes": bikes, "ebikes": ebikes, "classic": max(0, bikes - ebikes),
             "docks": st.get("num_docks_available", 0),
             "renting": bool(st.get("is_renting")), "returning": bool(st.get("is_returning")),
-            "reported": datetime.fromtimestamp(st["last_reported"], timezone.utc).isoformat(timespec="seconds")
+            "reported": datetime.fromtimestamp(st["last_reported"], BOSTON).isoformat(timespec="seconds")
             if st.get("last_reported", 0) > DAY else None,
         })
-    updated = datetime.fromtimestamp(status.get("last_updated", 0), timezone.utc).isoformat(timespec="seconds")
+    updated = datetime.fromtimestamp(status.get("last_updated", 0), BOSTON).isoformat(timespec="seconds")
     return out, updated
 
 
